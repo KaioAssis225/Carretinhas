@@ -1,6 +1,8 @@
 # Ambiente de DESENVOLVIMENTO do AssisCarretas.
 # Valores default abaixo servem apenas para uso local; produção usa
 # variáveis de ambiente reais e não expõe o PostgreSQL publicamente.
+name: assiscarretas
+
 services:
   db:
     image: postgres:16-alpine
