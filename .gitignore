@@ -1,0 +1,37 @@
+# Protótipo de referência — mantido fora do versionamento do novo sistema
+# (contém .env com chaves do Supabase; não deve ser publicado)
+carreta-livre-referencia/
+
+# Segredos e ambiente
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+dist/
+build/
+*.egg-info/
+
+# Node
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+npm-debug.log*
+
+# IDE / SO
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Docker
+*.local.yml

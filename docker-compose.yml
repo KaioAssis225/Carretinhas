@@ -1,0 +1,37 @@
+# Ambiente de DESENVOLVIMENTO do AssisCarretas.
+# Valores default abaixo servem apenas para uso local; produção usa
+# variáveis de ambiente reais e não expõe o PostgreSQL publicamente.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-assiscarretas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev-only-password}
+      POSTGRES_DB: ${POSTGRES_DB:-assiscarretas}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-assiscarretas} -d ${POSTGRES_DB:-assiscarretas}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+    environment:
+      ASSISCARRETAS_ENVIRONMENT: local
+      ASSISCARRETAS_DEBUG: "true"
+      ASSISCARRETAS_CORS_ORIGINS: http://localhost:5173
+      # Usada a partir do Bloco 2 (SQLAlchemy/Alembic)
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-assiscarretas}:${POSTGRES_PASSWORD:-dev-only-password}@db:5432/${POSTGRES_DB:-assiscarretas}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
