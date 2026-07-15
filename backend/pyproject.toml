@@ -8,6 +8,10 @@ dependencies = [
     "uvicorn[standard]>=0.32",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
+    "sqlalchemy>=2.0.36",
+    "alembic>=1.14",
+    "psycopg[binary]>=3.2",
+    "argon2-cffi>=23.1",
 ]
 
 [project.optional-dependencies]
@@ -34,7 +38,8 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "S", "A", "C4", "T20", "SIM"]
 ignore = []
 
 [tool.ruff.lint.per-file-ignores]
-"app/tests/**" = ["S101"]  # assert é esperado em testes
+# S101: assert é esperado em testes; S106: credenciais fictícias de teste
+"app/tests/**" = ["S101", "S106"]
 
 [tool.mypy]
 python_version = "3.12"

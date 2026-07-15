@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,6 +26,13 @@ class Settings(BaseSettings):
 
     # Origens permitidas para CORS, separadas por vírgula na variável de ambiente.
     cors_origins: str = "http://localhost:5173"
+
+    # Sem prefixo ASSISCARRETAS_ por convenção de plataformas de deploy.
+    # O default aponta para o PostgreSQL do docker-compose de desenvolvimento.
+    database_url: str = Field(
+        default="postgresql+psycopg://assiscarretas:dev-only-password@localhost:5432/assiscarretas",
+        validation_alias="DATABASE_URL",
+    )
 
     @property
     def cors_origin_list(self) -> list[str]:
