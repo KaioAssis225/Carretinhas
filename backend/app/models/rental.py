@@ -49,6 +49,7 @@ class Rental(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
 
     code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    idempotency_key: Mapped[str | None] = mapped_column(String(64), unique=True)
 
     client_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("clients.id", ondelete="RESTRICT"), nullable=False
@@ -84,8 +85,15 @@ class Rental(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     discount_amount: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False, default=Decimal("0"), server_default=text("0")
     )
+    discount_reason: Mapped[str | None] = mapped_column(String(500))
     total_expected: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     total_final: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    late_units: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    late_amount: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=Decimal("0"), server_default=text("0")
+    )
 
     status: Mapped[RentalStatus] = mapped_column(
         Enum(

@@ -1,13 +1,23 @@
 /**
  * Cliente HTTP central da aplicação.
  *
- * Toda chamada à API passa por aqui: base URL única, cookies de sessão,
- * e normalização do formato de erro do backend
- * ({ error: { code, message, correlation_id, details } }).
+ * - Access token fica APENAS em memória (nunca em localStorage).
+ * - O refresh token vive em cookie HttpOnly gerenciado pelo backend.
+ * - Em 401, tenta uma única renovação silenciosa e repete a requisição.
+ * - Normaliza o formato de erro do backend
+ *   ({ error: { code, message, correlation_id, details } }).
  */
 
-const BASE_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+const BASE_URL: string =
+  import.meta.env.VITE_API_URL ?? `${window.location.protocol}//${window.location.hostname}:8000`
 const API_PREFIX = '/api/v1'
+
+let accessToken: string | null = null
+let tokenRefreshPromise: Promise<boolean> | null = null
+
+export function setAccessToken(token: string | null): void {
+  accessToken = token
+}
 
 export class ApiError extends Error {
   readonly status: number
@@ -40,6 +50,11 @@ interface ErrorBody {
   }
 }
 
+export interface ApiRequestOptions extends RequestInit {
+  /** Desativa o retry via refresh (usado pelas próprias rotas de auth). */
+  skipAuthRetry?: boolean
+}
+
 async function parseError(response: Response): Promise<ApiError> {
   let body: ErrorBody = {}
   try {
@@ -56,15 +71,49 @@ async function parseError(response: Response): Promise<ApiError> {
   )
 }
 
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${BASE_URL}${API_PREFIX}${path}`, {
+function rawFetch(path: string, options: ApiRequestOptions): Promise<Response> {
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> | undefined),
+  }
+  if (!(options.body instanceof FormData)) headers['Content-Type'] = 'application/json'
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`
+  }
+  return fetch(`${BASE_URL}${API_PREFIX}${path}`, {
     credentials: 'include',
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
   })
+}
+
+function tryRefreshToken(): Promise<boolean> {
+  if (tokenRefreshPromise === null) {
+    tokenRefreshPromise = fetch(`${BASE_URL}${API_PREFIX}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          accessToken = null
+          return false
+        }
+        const body = (await response.json()) as { access_token: string }
+        accessToken = body.access_token
+        return true
+      })
+      .finally(() => {
+        tokenRefreshPromise = null
+      })
+  }
+  return tokenRefreshPromise
+}
+
+export async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+  let response = await rawFetch(path, options)
+
+  if (response.status === 401 && !options.skipAuthRetry && (await tryRefreshToken())) {
+    response = await rawFetch(path, options)
+  }
 
   if (!response.ok) {
     throw await parseError(response)
@@ -74,6 +123,15 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     return undefined as T
   }
   return (await response.json()) as T
+}
+
+export async function apiDownload(path: string): Promise<Blob> {
+  let response = await rawFetch(path, { method: 'GET' })
+  if (response.status === 401 && (await tryRefreshToken())) {
+    response = await rawFetch(path, { method: 'GET' })
+  }
+  if (!response.ok) throw await parseError(response)
+  return response.blob()
 }
 
 export interface HealthResponse {

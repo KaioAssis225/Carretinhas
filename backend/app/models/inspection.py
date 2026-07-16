@@ -55,6 +55,9 @@ class Inspection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     observations: Mapped[str | None] = mapped_column(Text)
     responsible_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    signature_storage_key: Mapped[str | None] = mapped_column(String(255))
+    signature_sha256: Mapped[str | None] = mapped_column(String(64))
+    signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     performed_by_user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False

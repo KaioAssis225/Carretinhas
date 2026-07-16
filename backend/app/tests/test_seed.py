@@ -32,7 +32,7 @@ def test_seed_e_idempotente(db_engine: Engine) -> None:
 def test_seed_cria_admin_com_troca_de_senha_obrigatoria(db_engine: Engine) -> None:
     with Session(db_engine) as session:
         seed(session)
-        admin = session.scalar(select(User).where(User.email == "admin@dev.assiscarretas.local"))
+        admin = session.scalar(select(User).where(User.email == "admin@dev.assiscarretas.com"))
 
     assert admin is not None
     assert admin.role == UserRole.ADMIN

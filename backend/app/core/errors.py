@@ -96,13 +96,19 @@ def install_error_handling(app: FastAPI) -> None:
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
         correlation_id = get_correlation_id(request)
+        validation_details: list[dict[str, Any]] = []
+        for error in exc.errors():
+            normalized = {key: value for key, value in error.items() if key != "ctx"}
+            if "ctx" in error:
+                normalized["ctx"] = {key: str(value) for key, value in error["ctx"].items()}
+            validation_details.append(normalized)
         return JSONResponse(
             status_code=422,
             content=error_body(
                 "validation_error",
                 "Dados de entrada inválidos.",
                 correlation_id,
-                details=exc.errors(),
+                details=validation_details,
             ),
         )
 

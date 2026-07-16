@@ -21,19 +21,7 @@ from app.models import Client, Trailer, TrailerStatus, User, UserRole
 DEV_PASSWORD = "Trocar123!"  # noqa: S105
 
 USERS: list[dict[str, str | UserRole]] = [
-    {"name": "Admin Dev", "email": "admin@dev.assiscarretas.local", "role": UserRole.ADMIN},
-    {"name": "Gestor Dev", "email": "gestor@dev.assiscarretas.local", "role": UserRole.GESTOR},
-    {
-        "name": "Atendente Dev",
-        "email": "atendente@dev.assiscarretas.local",
-        "role": UserRole.ATENDENTE,
-    },
-    {
-        "name": "Vistoriador Dev",
-        "email": "vistoriador@dev.assiscarretas.local",
-        "role": UserRole.VISTORIADOR,
-    },
-    {"name": "Viewer Dev", "email": "viewer@dev.assiscarretas.local", "role": UserRole.VIEWER},
+    {"name": "Admin Dev", "email": "admin@dev.assiscarretas.com", "role": UserRole.ADMIN},
 ]
 
 
@@ -156,6 +144,14 @@ def seed(session: Session) -> dict[str, int]:
                 )
             )
             created["users"] += 1
+
+    for legacy_user in session.scalars(
+        select(User).where(
+            User.email.like("%@dev.assiscarretas.com"),
+            User.email != "admin@dev.assiscarretas.com",
+        )
+    ):
+        legacy_user.is_active = False
 
     for client_data in CLIENTS:
         cpf = str(client_data["cpf"])

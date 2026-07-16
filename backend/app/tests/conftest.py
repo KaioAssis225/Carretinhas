@@ -7,8 +7,10 @@ from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine, make_url, text
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Session
 
 from alembic import command
+from app.core.db import get_session
 from app.main import create_app
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -79,3 +81,17 @@ def db_engine() -> Iterator[Engine]:
     command.upgrade(alembic_config(TEST_DATABASE_URL), "head")
     yield engine
     engine.dispose()
+
+
+@pytest.fixture
+def api_client(db_engine: Engine) -> Iterator[TestClient]:
+    """API completa usando o banco de teste (get_session sobrescrito)."""
+    app = create_app()
+
+    def _test_session() -> Iterator[Session]:
+        with Session(db_engine) as session:
+            yield session
+
+    app.dependency_overrides[get_session] = _test_session
+    with TestClient(app, raise_server_exceptions=False) as test_client:
+        yield test_client

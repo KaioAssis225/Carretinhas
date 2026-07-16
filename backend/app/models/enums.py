@@ -47,3 +47,33 @@ class MaintenanceStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
+
+
+class ChargeType(StrEnum):
+    RENTAL = "RENTAL"
+    LATE = "LATE"
+    DISCOUNT = "DISCOUNT"
+    CLEANING = "CLEANING"
+    DAMAGE = "DAMAGE"
+    ADJUSTMENT = "ADJUSTMENT"
+
+
+class PaymentMethod(StrEnum):
+    CASH = "CASH"
+    PIX = "PIX"
+    CARD = "CARD"
+    TRANSFER = "TRANSFER"
+    OTHER = "OTHER"
+
+
+class PaymentStatus(StrEnum):
+    CONFIRMED = "CONFIRMED"
+    REFUNDED = "REFUNDED"
+
+
+class DocumentType(StrEnum):
+    CONTRACT = "CONTRACT"
+    PICKUP_TERM = "PICKUP_TERM"
+    RETURN_TERM = "RETURN_TERM"
+    RECEIPT = "RECEIPT"
+    EXTRA_RECEIPT = "EXTRA_RECEIPT"

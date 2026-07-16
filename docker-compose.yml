@@ -26,7 +26,8 @@ services:
     environment:
       ASSISCARRETAS_ENVIRONMENT: local
       ASSISCARRETAS_DEBUG: "true"
-      ASSISCARRETAS_CORS_ORIGINS: http://localhost:5173
+      ASSISCARRETAS_CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      ASSISCARRETAS_PRIVATE_STORAGE_DIR: /app/private-storage
       # Usada a partir do Bloco 2 (SQLAlchemy/Alembic)
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-assiscarretas}:${POSTGRES_PASSWORD:-dev-only-password}@db:5432/${POSTGRES_DB:-assiscarretas}
     ports:
@@ -34,6 +35,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - inspection_data:/app/private-storage
 
 volumes:
   pgdata:
+  inspection_data:

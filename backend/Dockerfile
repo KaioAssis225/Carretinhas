@@ -10,8 +10,13 @@ RUN groupadd --system app && useradd --system --gid app app
 
 COPY pyproject.toml ./
 COPY app ./app
+COPY scripts ./scripts
+COPY alembic.ini ./alembic.ini
+COPY alembic ./alembic
 
 RUN pip install --no-cache-dir .
+
+RUN mkdir -p /app/private-storage && chown -R app:app /app/private-storage
 
 USER app
 
