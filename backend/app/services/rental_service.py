@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.errors import AppError
 from app.models import (
     Client,
@@ -189,7 +190,7 @@ def create_rental(
     actor: User,
     idempotency_key: str | None,
 ) -> Rental:
-    if data.start_at <= datetime.now(UTC):
+    if not get_settings().allow_test_rental_dates and data.start_at <= datetime.now(UTC):
         raise AppError(
             code="retirada_no_passado",
             message="A retirada deve ser agendada para uma data futura.",
@@ -335,7 +336,7 @@ def pickup(session: Session, rental_id: uuid.UUID, *, actor: User) -> Rental:
             message="Somente uma reserva pode ser retirada.",
             status_code=409,
         )
-    if datetime.now(UTC) < rental.start_at:
+    if not get_settings().allow_test_rental_dates and datetime.now(UTC) < rental.start_at:
         local_start = rental.start_at.astimezone(ZoneInfo("America/Sao_Paulo"))
         raise AppError(
             code="retirada_antes_do_agendamento",

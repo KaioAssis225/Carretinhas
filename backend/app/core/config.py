@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     app_name: str = "AssisCarretas API"
     environment: Literal["local", "staging", "production"] = "local"
     debug: bool = False
+    # Libera datas passadas e retirada antecipada apenas para simulações controladas.
+    allow_test_rental_dates: bool = False
 
     api_v1_prefix: str = "/api/v1"
 
