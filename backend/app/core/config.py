@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,6 +52,16 @@ class Settings(BaseSettings):
     s3_region: str = "auto"
     bootstrap_admin_email: str | None = None
     bootstrap_admin_password: str | None = None
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _usar_driver_psycopg(cls, value: object) -> object:
+        """Adapta a URL PostgreSQL genérica fornecida por plataformas de deploy."""
+        if isinstance(value, str) and value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+psycopg://", 1)
+        if isinstance(value, str) and value.startswith("postgres://"):
+            return value.replace("postgres://", "postgresql+psycopg://", 1)
+        return value
 
     @model_validator(mode="after")
     def _exigir_segredo_real_em_producao(self) -> "Settings":
