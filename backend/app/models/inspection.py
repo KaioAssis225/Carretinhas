@@ -49,6 +49,9 @@ class Inspection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     coupling_ok: Mapped[bool] = mapped_column(nullable=False)
     documents_ok: Mapped[bool] = mapped_column(nullable=False)
     is_clean: Mapped[bool] = mapped_column(nullable=False)
+    client_vehicle_electrical_ok: Mapped[bool] = mapped_column(
+        nullable=False, default=True, server_default="true"
+    )
 
     # Quilometragem opcional para carretas
     mileage_km: Mapped[Decimal | None] = mapped_column(Numeric(9, 1))

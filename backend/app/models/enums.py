@@ -31,6 +31,17 @@ class PeriodType(StrEnum):
     HOURS = "HOURS"
 
 
+class CancellationBillingMode(StrEnum):
+    NO_CHARGE = "NO_CHARGE"
+    CHARGE_UNTIL_NOW = "CHARGE_UNTIL_NOW"
+
+
+class ClientDocumentType(StrEnum):
+    ADDRESS_PROOF = "ADDRESS_PROOF"
+    DRIVER_LICENSE = "DRIVER_LICENSE"
+    VEHICLE_DOCUMENT = "VEHICLE_DOCUMENT"
+
+
 class InspectionType(StrEnum):
     PICKUP = "PICKUP"
     RETURN = "RETURN"

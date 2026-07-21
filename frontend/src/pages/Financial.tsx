@@ -138,11 +138,12 @@ export function RentalFinancialPanel({ rentalId }: { rentalId: string }) {
   return <div className="space-y-5">
     {financial.isLoading && <p>Carregando financeiro…</p>}
     {financial.data && <>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <div className="card"><p className="text-sm text-slate-500">Locação original</p><p className="text-2xl font-bold">{money(originalTotal)}</p></div>
         <div className="card"><p className="text-sm text-slate-500">Total pago</p><p className="text-2xl font-bold text-green-700">{money(paidTotal)}</p></div>
         <div className="card"><p className="text-sm text-slate-500">Cobranças extras</p><p className="text-2xl font-bold">{money(extraTotal)}</p></div>
         <div className="card"><p className="text-sm text-slate-500">Saldo somente dos extras</p><p className="text-2xl font-bold text-primary">{money(extraBalance)}</p></div>
+        <div className={`card ${financial.data.pickup_payment_met ? 'bg-green-50' : 'bg-amber-50'}`}><p className="text-sm text-slate-500">50% para retirada</p><p className={`text-xl font-bold ${financial.data.pickup_payment_met ? 'text-green-700' : 'text-amber-700'}`}>{financial.data.pickup_payment_met ? 'Comprovado' : 'Pendente'}</p><p className="text-xs">Mínimo: {money(financial.data.pickup_minimum_payment)}</p></div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

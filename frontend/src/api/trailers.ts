@@ -15,7 +15,6 @@ export interface TrailerData {
   height_m: string
   load_capacity_kg: string
   daily_rate: string
-  hourly_rate: string | null
   deposit_amount: string | null
   status: TrailerStatus
   is_active: boolean
@@ -34,7 +33,6 @@ export interface TrailerPayload {
   height_m: number
   load_capacity_kg: number
   daily_rate: number
-  hourly_rate?: number | null
   deposit_amount?: number | null
 }
 

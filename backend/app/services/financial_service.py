@@ -59,8 +59,26 @@ def ensure_system_charges(session: Session, rental: Rental, *, actor: User) -> N
         ("discount", ChargeType.DISCOUNT, "Desconto comercial", rental.discount_amount),
         ("late", ChargeType.LATE, "Atraso na devolução", rental.late_amount),
     ]
+    if rental.status == RentalStatus.CANCELLED:
+        system = [
+            (
+                "rental",
+                ChargeType.RENTAL,
+                "Cancelamento proporcional",
+                rental.cancellation_amount or Decimal("0"),
+            ),
+            ("discount", ChargeType.DISCOUNT, "Desconto comercial", Decimal("0")),
+            ("late", ChargeType.LATE, "Atraso na devolução", Decimal("0")),
+        ]
     for source, kind, description, amount in system:
-        if amount > 0 and financial_repo.charge_by_source(session, rental.id, source) is None:
+        existing = financial_repo.charge_by_source(session, rental.id, source)
+        if amount <= 0 and existing is not None:
+            session.delete(existing)
+        elif amount > 0 and existing is not None:
+            existing.type = kind
+            existing.description = description
+            existing.amount = amount
+        elif amount > 0:
             session.add(
                 RentalCharge(
                     rental_id=rental.id,
@@ -87,6 +105,7 @@ def summary(session: Session, rental_id: uuid.UUID, *, actor: User) -> Financial
     charges = financial_repo.list_charges(session, rental.id)
     payments = financial_repo.list_payments(session, rental.id)
     charged, paid = financial_repo.totals(session, rental.id)
+    pickup_minimum = (rental.total_expected / Decimal("2")).quantize(Decimal("0.01"))
     return FinancialSummary(
         rental_id=rental.id,
         charges=[ChargeOut.model_validate(item) for item in charges],
@@ -94,6 +113,8 @@ def summary(session: Session, rental_id: uuid.UUID, *, actor: User) -> Financial
         charge_total=charged,
         paid_total=paid,
         balance_due=max(charged - paid, Decimal("0")),
+        pickup_minimum_payment=pickup_minimum,
+        pickup_payment_met=paid >= pickup_minimum,
     )
 
 
@@ -273,6 +294,8 @@ def _snapshot(session: Session, rental: Rental, kind: DocumentType) -> dict[str,
         "charge_total": _money(charged),
         "paid_total": _money(paid),
         "balance_due": _money(max(charged - paid, Decimal("0"))),
+        "pickup_minimum_payment": _money(rental.total_expected / Decimal("2")),
+        "pickup_payment_met": paid >= rental.total_expected / Decimal("2"),
         "base_total": _money(base_total),
         "base_balance": _money(max(base_total - paid, Decimal("0"))),
         "extra_total": _money(extra_total),
@@ -308,6 +331,7 @@ def _snapshot(session: Session, rental: Rental, kind: DocumentType) -> dict[str,
             "coupling_ok": inspection.coupling_ok,
             "documents_ok": inspection.documents_ok,
             "is_clean": inspection.is_clean,
+            "client_vehicle_electrical_ok": inspection.client_vehicle_electrical_ok,
             "observations": inspection.observations,
             "signed_at": inspection.signed_at.isoformat() if inspection.signed_at else None,
             "signature_sha256": inspection.signature_sha256,
@@ -360,6 +384,9 @@ def _document_lines(snapshot: dict[str, Any]) -> list[str]:
             "na vistoria, ressalvado o desgaste normal.",
             "Avarias, limpeza extraordinária, atraso e demais despesas comprovadas poderão "
             "ser cobradas no fechamento.",
+            f"Metade exigida na retirada: R$ {snapshot['pickup_minimum_payment']}",
+            f"Total pago registrado: R$ {snapshot['paid_total']}",
+            f"Pagamento mínimo comprovado: {'SIM' if snapshot['pickup_payment_met'] else 'NÃO'}",
             "CHECKLIST DE INTEGRIDADE:",
             *[
                 f"{label}: {'APROVADO' if inspection[key] else 'COM RESSALVA'}"
@@ -367,6 +394,10 @@ def _document_lines(snapshot: dict[str, Any]) -> list[str]:
                     ("structure_ok", "Estrutura"), ("tires_ok", "Pneus"),
                     ("lights_ok", "Iluminação"), ("coupling_ok", "Engate"),
                     ("documents_ok", "Documentos"), ("is_clean", "Limpeza"),
+                    (
+                        "client_vehicle_electrical_ok",
+                        "Elétrica do veículo do cliente",
+                    ),
                 )
             ],
             f"Observações: {inspection['observations'] or 'Sem observações.'}",
@@ -378,6 +409,9 @@ def _document_lines(snapshot: dict[str, Any]) -> list[str]:
         lines += [
             f"DECLARAÇÃO: O cliente confirma que {phase} a carreta nas condições descritas "
             "abaixo e concorda com este registro.",
+            f"Metade exigida na retirada: R$ {snapshot['pickup_minimum_payment']}",
+            f"Total pago registrado: R$ {snapshot['paid_total']}",
+            f"Pagamento mínimo comprovado: {'SIM' if snapshot['pickup_payment_met'] else 'NÃO'}",
             "CHECKLIST DE INTEGRIDADE:",
             *[
                 f"{label}: {'OK' if inspection[key] else 'COM RESSALVA'}"
@@ -385,6 +419,10 @@ def _document_lines(snapshot: dict[str, Any]) -> list[str]:
                     ("structure_ok", "Estrutura"), ("tires_ok", "Pneus"),
                     ("lights_ok", "Iluminação"), ("coupling_ok", "Engate"),
                     ("documents_ok", "Documentos"), ("is_clean", "Limpeza"),
+                    (
+                        "client_vehicle_electrical_ok",
+                        "Elétrica do veículo do cliente",
+                    ),
                 )
             ],
             f"Observações: {inspection['observations'] or 'Sem observações.'}",

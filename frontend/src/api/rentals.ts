@@ -2,7 +2,8 @@ import { apiFetch } from '@/api/client'
 import type { PageMeta } from '@/api/clients'
 
 export type RentalStatus = 'DRAFT' | 'RESERVED' | 'ACTIVE' | 'OVERDUE' | 'COMPLETED' | 'CANCELLED'
-export type PeriodType = 'DAYS' | 'HOURS'
+export type PeriodType = 'DAYS'
+export type CancellationBillingMode = 'NO_CHARGE' | 'CHARGE_UNTIL_NOW'
 
 export interface QuotePayload {
   trailer_id: string
@@ -52,6 +53,10 @@ export interface RentalData {
   late_amount: string
   status: RentalStatus
   notes: string | null
+  cancel_reason: string | null
+  cancelled_at: string | null
+  cancellation_billing_mode: CancellationBillingMode | null
+  cancellation_amount: string | null
   created_at: string
 }
 
@@ -96,6 +101,7 @@ export interface InspectionPayload {
   coupling_ok: boolean
   documents_ok: boolean
   is_clean: boolean
+  client_vehicle_electrical_ok: boolean
   mileage_km?: number | null
   observations?: string | null
   responsible_name: string
@@ -142,4 +148,15 @@ export function pickupRental(rentalId: string): Promise<RentalData> {
 
 export function returnRental(rentalId: string, sendToMaintenance: boolean): Promise<RentalData> {
   return apiFetch(`/rentals/${rentalId}/return`, { method: 'POST', body: JSON.stringify({ send_to_maintenance: sendToMaintenance }) })
+}
+
+export function cancelRental(
+  rentalId: string,
+  billingMode: CancellationBillingMode,
+  reason: string,
+): Promise<RentalData> {
+  return apiFetch(`/rentals/${rentalId}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({ billing_mode: billingMode, reason }),
+  })
 }

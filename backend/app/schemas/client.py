@@ -4,6 +4,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.models import ClientDocumentType
 from app.schemas.user import PageMeta
 
 
@@ -175,3 +176,17 @@ class ClientSummary(BaseModel):
 class ClientListResponse(BaseModel):
     data: list[ClientSummary]
     meta: PageMeta
+
+
+class ClientDocumentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    client_id: uuid.UUID
+    type: ClientDocumentType
+    original_name: str
+    mime_type: str
+    size_bytes: int
+    sha256: str
+    created_at: datetime
+    updated_at: datetime

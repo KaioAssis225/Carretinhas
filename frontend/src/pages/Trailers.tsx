@@ -24,13 +24,12 @@ interface TrailerForm {
   height_m: string
   load_capacity_kg: string
   daily_rate: string
-  hourly_rate: string
   deposit_amount: string
 }
 
 const emptyForm: TrailerForm = {
   code: '', model: '', description: '', plate: '', renavam: '', length_m: '', width_m: '',
-  height_m: '', load_capacity_kg: '', daily_rate: '', hourly_rate: '', deposit_amount: '',
+  height_m: '', load_capacity_kg: '', daily_rate: '', deposit_amount: '',
 }
 
 const statusLabels: Record<TrailerStatus, string> = {
@@ -57,7 +56,6 @@ function toPayload(form: TrailerForm): TrailerPayload {
     height_m: Number(form.height_m),
     load_capacity_kg: Number(form.load_capacity_kg),
     daily_rate: Number(form.daily_rate),
-    hourly_rate: optionalNumber(form.hourly_rate),
     deposit_amount: optionalNumber(form.deposit_amount),
   }
 }
@@ -143,7 +141,6 @@ export default function Trailers() {
           <label>Altura (m)<input className="input" type="number" min="0.01" step="0.01" {...form.register('height_m', { required: true })} /></label>
           <label>Capacidade (kg)<input className="input" type="number" min="0.01" step="0.01" {...form.register('load_capacity_kg', { required: true })} /></label>
           <label>Valor da diária<input className="input" type="number" min="0.01" step="0.01" {...form.register('daily_rate', { required: true })} /></label>
-          <label>Valor por hora<input className="input" type="number" min="0.01" step="0.01" {...form.register('hourly_rate')} /></label>
           <label>Caução<input className="input" type="number" min="0" step="0.01" {...form.register('deposit_amount')} /></label>
         </div>
         <label>Descrição<textarea className="input min-h-24" {...form.register('description')} /></label>

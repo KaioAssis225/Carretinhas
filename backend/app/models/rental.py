@@ -18,7 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
-from app.models.enums import PeriodType, RentalStatus
+from app.models.enums import CancellationBillingMode, PeriodType, RentalStatus
 
 
 class Rental(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -66,10 +66,14 @@ class Rental(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     return_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT")
     )
+    cancelled_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT")
+    )
 
     start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expected_return_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     actual_return_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Memória comercial do que foi contratado (dias ou horas)
     period_type: Mapped[PeriodType] = mapped_column(
@@ -108,4 +112,14 @@ class Rental(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         server_default=RentalStatus.DRAFT.value,
     )
     cancel_reason: Mapped[str | None] = mapped_column(Text)
+    cancellation_billing_mode: Mapped[CancellationBillingMode | None] = mapped_column(
+        Enum(
+            CancellationBillingMode,
+            native_enum=False,
+            create_constraint=True,
+            length=30,
+            name="cancellation_billing_mode",
+        )
+    )
+    cancellation_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     notes: Mapped[str | None] = mapped_column(Text)

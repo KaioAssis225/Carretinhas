@@ -55,6 +55,8 @@ class FinancialSummary(BaseModel):
     charge_total: Decimal
     paid_total: Decimal
     balance_due: Decimal
+    pickup_minimum_payment: Decimal
+    pickup_payment_met: bool
 
 
 class DocumentCreate(BaseModel):

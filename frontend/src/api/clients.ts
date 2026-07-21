@@ -1,4 +1,18 @@
-import { apiFetch } from '@/api/client'
+import { apiDownload, apiFetch } from '@/api/client'
+
+export type ClientDocumentType = 'ADDRESS_PROOF' | 'DRIVER_LICENSE' | 'VEHICLE_DOCUMENT'
+
+export interface ClientDocumentData {
+  id: string
+  client_id: string
+  type: ClientDocumentType
+  original_name: string
+  mime_type: string
+  size_bytes: number
+  sha256: string
+  created_at: string
+  updated_at: string
+}
 
 export interface PageMeta {
   page: number
@@ -87,4 +101,22 @@ export function setClientActive(id: string, active: boolean): Promise<ClientData
   return apiFetch<ClientData>(`/clients/${id}/${active ? 'activate' : 'deactivate'}`, {
     method: 'POST',
   })
+}
+
+export function listClientDocuments(clientId: string): Promise<ClientDocumentData[]> {
+  return apiFetch(`/clients/${clientId}/documents`)
+}
+
+export function uploadClientDocument(
+  clientId: string,
+  type: ClientDocumentType,
+  file: File,
+): Promise<ClientDocumentData> {
+  const body = new FormData()
+  body.append('file', file)
+  return apiFetch(`/clients/${clientId}/documents/${type}`, { method: 'POST', body })
+}
+
+export function downloadClientDocument(clientId: string, documentId: string): Promise<Blob> {
+  return apiDownload(`/clients/${clientId}/documents/${documentId}/content`)
 }

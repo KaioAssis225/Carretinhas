@@ -13,6 +13,7 @@ from app.schemas.rental import (
     AgendaEvent,
     AgendaResponse,
     RentalCreate,
+    RentalCancelRequest,
     RentalListResponse,
     RentalOut,
     RentalQuoteOut,
@@ -169,6 +170,24 @@ def return_rental(
 ) -> RentalOut:
     rental = rental_service.return_rental(
         session, rental_id, actor=user, send_to_maintenance=body.send_to_maintenance
+    )
+    session.commit()
+    return RentalOut.model_validate(rental)
+
+
+@router.post("/{rental_id}/cancel", response_model=RentalOut)
+def cancel_rental(
+    rental_id: uuid.UUID,
+    body: RentalCancelRequest,
+    session: DbSession,
+    user: RentalEditor,
+) -> RentalOut:
+    rental = rental_service.cancel_rental(
+        session,
+        rental_id,
+        billing_mode=body.billing_mode,
+        reason=body.reason,
+        actor=user,
     )
     session.commit()
     return RentalOut.model_validate(rental)

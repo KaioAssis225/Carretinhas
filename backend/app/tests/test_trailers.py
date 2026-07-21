@@ -29,7 +29,6 @@ def trailer_payload() -> dict[str, object]:
         "height_m": "0.50",
         "load_capacity_kg": "1500.00",
         "daily_rate": "180.00",
-        "hourly_rate": "30.00",
         "deposit_amount": "500.00",
     }
 

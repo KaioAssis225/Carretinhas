@@ -7,6 +7,7 @@ EXPECTED_TABLES = {
     "users",
     "refresh_tokens",
     "clients",
+    "client_documents",
     "trailers",
     "rentals",
     "inspections",

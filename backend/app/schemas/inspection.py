@@ -16,6 +16,7 @@ class InspectionCreate(BaseModel):
     coupling_ok: bool
     documents_ok: bool
     is_clean: bool
+    client_vehicle_electrical_ok: bool = True
     mileage_km: Decimal | None = Field(default=None, ge=0)
     observations: str | None = Field(default=None, max_length=2000)
     responsible_name: str = Field(min_length=2, max_length=150)
@@ -29,6 +30,7 @@ class InspectionCreate(BaseModel):
             self.coupling_ok,
             self.documents_ok,
             self.is_clean,
+            self.client_vehicle_electrical_ok,
         ]
         if not all(checks) and not (self.observations or "").strip():
             raise ValueError("Descreva os problemas encontrados na vistoria.")
@@ -56,6 +58,7 @@ class InspectionOut(BaseModel):
     coupling_ok: bool
     documents_ok: bool
     is_clean: bool
+    client_vehicle_electrical_ok: bool
     mileage_km: Decimal | None
     observations: str | None
     responsible_name: str

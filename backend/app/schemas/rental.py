@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.models import PeriodType, RentalStatus
+from app.models import CancellationBillingMode, PeriodType, RentalStatus
 from app.schemas.user import PageMeta
 
 
@@ -26,6 +26,8 @@ class RentalQuoteRequest(BaseModel):
             raise ValueError("A devolução prevista deve ser posterior à retirada.")
         if self.discount_amount > 0 and not (self.discount_reason or "").strip():
             raise ValueError("Informe a justificativa do desconto.")
+        if self.period_type != PeriodType.DAYS:
+            raise ValueError("As locações são cobradas somente por diária.")
         return self
 
 
@@ -72,6 +74,10 @@ class RentalOut(BaseModel):
     late_amount: Decimal
     status: RentalStatus
     cancel_reason: str | None
+    cancelled_at: datetime | None
+    cancelled_by_user_id: uuid.UUID | None
+    cancellation_billing_mode: CancellationBillingMode | None
+    cancellation_amount: Decimal | None
     notes: str | None
     created_at: datetime
     updated_at: datetime
@@ -105,3 +111,10 @@ class AgendaResponse(BaseModel):
     data: list[AgendaEvent]
     start_at: datetime
     end_at: datetime
+
+
+class RentalCancelRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    billing_mode: CancellationBillingMode
+    reason: str = Field(min_length=3, max_length=1000)

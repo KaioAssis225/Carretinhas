@@ -1,7 +1,10 @@
 from app.models.base import Base
 from app.models.client import Client
+from app.models.client_document import ClientDocument
 from app.models.enums import (
+    CancellationBillingMode,
     ChargeType,
+    ClientDocumentType,
     DocumentType,
     InspectionType,
     MaintenancePriority,
@@ -25,8 +28,11 @@ from app.models.user import User
 __all__ = [
     "AuditLog",
     "Base",
+    "CancellationBillingMode",
     "ChargeType",
     "Client",
+    "ClientDocument",
+    "ClientDocumentType",
     "Inspection",
     "InspectionPhoto",
     "InspectionType",

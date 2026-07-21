@@ -8,12 +8,13 @@ import { generateDocument } from '@/api/financial'
 import {
   createInspection,
   createRental,
+  cancelRental,
   listRentals,
   quoteRental,
   uploadInspectionPhoto,
   uploadInspectionSignature,
-  type PeriodType,
   type QuotePayload,
+  type RentalData,
   type RentalPayload,
 } from '@/api/rentals'
 import { listTrailers } from '@/api/trailers'
@@ -26,7 +27,6 @@ interface RentalForm {
   trailer_id: string
   start_at: string
   expected_return_at: string
-  period_type: PeriodType
   discount_amount: string
   discount_reason: string
   notes: string
@@ -36,11 +36,12 @@ interface RentalForm {
   coupling_ok: boolean
   documents_ok: boolean
   is_clean: boolean
+  client_vehicle_electrical_ok: boolean
   responsible_name: string
   inspection_observations: string
 }
 
-type CheckField = 'structure_ok' | 'tires_ok' | 'lights_ok' | 'coupling_ok' | 'documents_ok' | 'is_clean'
+type CheckField = 'structure_ok' | 'tires_ok' | 'lights_ok' | 'coupling_ok' | 'documents_ok' | 'is_clean' | 'client_vehicle_electrical_ok'
 
 const checks: Array<[CheckField, string]> = [
   ['structure_ok', 'Estrutura'],
@@ -49,12 +50,14 @@ const checks: Array<[CheckField, string]> = [
   ['coupling_ok', 'Engate'],
   ['documents_ok', 'Documentos'],
   ['is_clean', 'Limpeza'],
+  ['client_vehicle_electrical_ok', 'Elétrica do veículo do cliente funcionando'],
 ]
 
 const defaults: Partial<RentalForm> = {
-  period_type: 'DAYS', discount_amount: '0', discount_reason: '', notes: '',
+  discount_amount: '0', discount_reason: '', notes: '',
   structure_ok: true, tires_ok: true, lights_ok: true, coupling_ok: true,
-  documents_ok: true, is_clean: true, responsible_name: '', inspection_observations: '',
+  documents_ok: true, is_clean: true, client_vehicle_electrical_ok: true,
+  responsible_name: '', inspection_observations: '',
 }
 
 const statusLabels: Record<string, string> = {
@@ -69,7 +72,7 @@ function quotePayload(form: RentalForm): QuotePayload {
     trailer_id: form.trailer_id,
     start_at: iso(form.start_at),
     expected_return_at: iso(form.expected_return_at),
-    period_type: form.period_type,
+    period_type: 'DAYS',
     discount_amount: Number(form.discount_amount || 0),
     discount_reason: form.discount_reason.trim() || null,
   }
@@ -86,6 +89,8 @@ export default function Rentals() {
   const [step, setStep] = useState(1)
   const [rentalTab, setRentalTab] = useState<'open' | 'closed'>('open')
   const [financialRentalId, setFinancialRentalId] = useState<string | null>(null)
+  const [cancellingRental, setCancellingRental] = useState<RentalData | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
   const [inspectionPhoto, setInspectionPhoto] = useState<File | null>(null)
   const [signatureOpen, setSignatureOpen] = useState(false)
   const signatureRef = useRef<SignatureCanvasHandle>(null)
@@ -115,6 +120,7 @@ export default function Rentals() {
         type: 'PICKUP', structure_ok: values.structure_ok, tires_ok: values.tires_ok,
         lights_ok: values.lights_ok, coupling_ok: values.coupling_ok,
         documents_ok: values.documents_ok, is_clean: values.is_clean,
+        client_vehicle_electrical_ok: values.client_vehicle_electrical_ok,
         responsible_name: values.responsible_name,
         observations: values.inspection_observations.trim() || null,
       })
@@ -136,6 +142,23 @@ export default function Rentals() {
       setFormOpen(false)
       setStep(1)
       quote.reset()
+    },
+  })
+
+  const cancel = useMutation({
+    mutationFn: async (billingMode: 'NO_CHARGE' | 'CHARGE_UNTIL_NOW') => {
+      if (!cancellingRental) throw new Error('Selecione uma locação.')
+      if (cancelReason.trim().length < 3) throw new Error('Informe o motivo do cancelamento.')
+      return cancelRental(cancellingRental.id, billingMode, cancelReason.trim())
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rentals'] }),
+        queryClient.invalidateQueries({ queryKey: ['trailers'] }),
+        queryClient.invalidateQueries({ queryKey: ['agenda'] }),
+      ])
+      setCancellingRental(null)
+      setCancelReason('')
     },
   })
 
@@ -169,7 +192,7 @@ export default function Rentals() {
           <label>Carreta<select className="input" {...form.register('trailer_id', { required: true })}><option value="">Selecione uma carreta específica</option>{trailers.data?.data.map((trailer) => <option key={trailer.id} value={trailer.id}>{trailer.plate || trailer.code} · {trailer.model} · {trailer.status}</option>)}</select><span className="mt-1 block text-xs text-slate-500">Somente esta carreta será verificada.</span></label>
           <label>Retirada<input className="input" type="datetime-local" {...form.register('start_at', { required: true })} /></label>
           <label>Devolução prevista<input className="input" type="datetime-local" {...form.register('expected_return_at', { required: true })} /></label>
-          <label>Forma de cobrança<select className="input" {...form.register('period_type')}><option value="DAYS">Por diária</option><option value="HOURS">Por hora</option></select></label>
+          <label>Forma de cobrança<input className="input bg-slate-50" readOnly value="Somente por diária" /></label>
           <label>Desconto (R$)<input className="input" type="number" min="0" step="0.01" {...form.register('discount_amount')} /></label>
           <label className="md:col-span-2">Justificativa do desconto<input className="input" {...form.register('discount_reason')} /></label>
           <label className="md:col-span-2">Observações<textarea className="input min-h-20" {...form.register('notes')} /></label>
@@ -177,7 +200,7 @@ export default function Rentals() {
         </div>}
 
         {quote.isError && <p className="text-red-700">{quote.error instanceof Error ? quote.error.message : 'Não foi possível calcular.'}</p>}
-        {step >= 2 && quote.data && <div className="rounded-lg bg-slate-50 p-4"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><div><p className="text-xs text-slate-500">Período cobrado</p><p className="font-semibold">{quote.data.period_quantity} {quote.data.period_type === 'DAYS' ? 'diária(s)' : 'hora(s)'}</p></div><div><p className="text-xs text-slate-500">Subtotal</p><p className="font-semibold">R$ {quote.data.subtotal}</p></div><div><p className="text-xs text-slate-500">Desconto</p><p className="font-semibold">R$ {quote.data.discount_amount}</p></div><div><p className="text-xs text-slate-500">Total oficial</p><p className="text-xl font-bold text-primary">R$ {quote.data.total_expected}</p></div></div><p className={`mt-3 text-sm font-medium ${quote.data.available ? 'text-green-700' : 'text-red-700'}`}>{quote.data.available ? 'Carreta disponível no período.' : quote.data.availability_message}</p></div>}
+        {step >= 2 && quote.data && <div className="rounded-lg bg-slate-50 p-4"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><div><p className="text-xs text-slate-500">Período cobrado</p><p className="font-semibold">{quote.data.period_quantity} diária(s)</p></div><div><p className="text-xs text-slate-500">Subtotal</p><p className="font-semibold">R$ {quote.data.subtotal}</p></div><div><p className="text-xs text-slate-500">Desconto</p><p className="font-semibold">R$ {quote.data.discount_amount}</p></div><div><p className="text-xs text-slate-500">Total oficial</p><p className="text-xl font-bold text-primary">R$ {quote.data.total_expected}</p></div></div><p className={`mt-3 text-sm font-medium ${quote.data.available ? 'text-green-700' : 'text-red-700'}`}>{quote.data.available ? 'Carreta disponível no período.' : quote.data.availability_message}</p></div>}
         {step === 2 && quote.data && <div className="mobile-actions flex flex-wrap gap-2"><button type="button" className="btn-secondary" onClick={() => setStep(1)}>Alterar dados</button><button type="button" className="btn-primary" disabled={!quote.data.available} onClick={continueToChecklist}>Continuar para checklist</button></div>}
 
         {step === 3 && <div className="space-y-4">
@@ -200,7 +223,18 @@ export default function Rentals() {
       <button type="button" role="tab" aria-selected={rentalTab === 'open'} className={`min-h-11 border-b-2 px-4 font-medium ${rentalTab === 'open' ? 'border-primary text-primary' : 'border-transparent text-slate-500'}`} onClick={() => setRentalTab('open')}>Em aberto</button>
       <button type="button" role="tab" aria-selected={rentalTab === 'closed'} className={`min-h-11 border-b-2 px-4 font-medium ${rentalTab === 'closed' ? 'border-primary text-primary' : 'border-transparent text-slate-500'}`} onClick={() => setRentalTab('closed')}>Encerradas</button>
     </div>
-    <div className="grid gap-3">{displayedRentals?.map((rental) => <article className="card" key={rental.id}><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h2 className="font-semibold">{rental.code}</h2><p className="break-words text-sm text-slate-600">{clientName(rental.client_id)} · Carreta {trailerCode(rental.trailer_id)}</p></div><span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">{statusLabels[rental.status]}</span></div><div className="mt-3 grid gap-2 text-sm sm:grid-cols-3"><p><span className="text-slate-500">Retirada:</span> {formatDate(rental.start_at)}</p><p><span className="text-slate-500">Devolução:</span> {formatDate(rental.expected_return_at)}</p><p><span className="text-slate-500">Total:</span> <strong>R$ {rental.total_final ?? rental.total_expected}</strong></p></div><div className="mobile-actions mt-3 flex flex-wrap gap-2"><button className="btn-secondary" onClick={() => setFinancialRentalId(rental.id)}>Financeiro e documentos</button>{rental.status === 'RESERVED' && <Link className="btn-primary" to={`/locacoes/${rental.id}/vistoria/pickup`}>Realizar retirada</Link>}{['ACTIVE', 'OVERDUE'].includes(rental.status) && <Link className="btn-primary" to={`/locacoes/${rental.id}/vistoria/return`}>Realizar devolução</Link>}</div></article>)}{displayedRentals?.length === 0 && <div className="card text-center text-slate-500">Nenhuma locação {rentalTab === 'open' ? 'em aberto' : 'encerrada'}.</div>}</div>
+    <div className="grid gap-3">{displayedRentals?.map((rental) => <article className="card" key={rental.id}><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h2 className="font-semibold">{rental.code}</h2><p className="break-words text-sm text-slate-600">{clientName(rental.client_id)} · Carreta {trailerCode(rental.trailer_id)}</p></div><span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">{statusLabels[rental.status]}</span></div><div className="mt-3 grid gap-2 text-sm sm:grid-cols-3"><p><span className="text-slate-500">Retirada:</span> {formatDate(rental.start_at)}</p><p><span className="text-slate-500">Devolução:</span> {formatDate(rental.expected_return_at)}</p><p><span className="text-slate-500">Total:</span> <strong>R$ {rental.total_final ?? rental.total_expected}</strong></p></div><div className="mobile-actions mt-3 flex flex-wrap gap-2"><button className="btn-secondary" onClick={() => setFinancialRentalId(rental.id)}>Financeiro e documentos</button>{canCreate && ['DRAFT', 'RESERVED', 'ACTIVE', 'OVERDUE'].includes(rental.status) && <button className="btn-secondary text-red-700" onClick={() => { setCancellingRental(rental); setCancelReason('') }}>Cancelar locação</button>}{rental.status === 'RESERVED' && <Link className="btn-primary" to={`/locacoes/${rental.id}/vistoria/pickup`}>Realizar retirada</Link>}{['ACTIVE', 'OVERDUE'].includes(rental.status) && <Link className="btn-primary" to={`/locacoes/${rental.id}/vistoria/return`}>Realizar devolução</Link>}</div></article>)}{displayedRentals?.length === 0 && <div className="card text-center text-slate-500">Nenhuma locação {rentalTab === 'open' ? 'em aberto' : 'encerrada'}.</div>}</div>
     {financialRentalId && <Modal title="Locação, financeiro e documentos" onClose={() => setFinancialRentalId(null)}><RentalFinancialPanel rentalId={financialRentalId} /></Modal>}
+    {cancellingRental && <Modal title="Cancelar locação" onClose={() => setCancellingRental(null)}>
+      <div className="space-y-4">
+        <div className="rounded-lg bg-slate-50 p-4 text-sm"><p><strong>{cancellingRental.code}</strong></p><p>Cliente: {clientName(cancellingRental.client_id)} · Carreta {trailerCode(cancellingRental.trailer_id)}</p></div>
+        <label>Motivo do cancelamento<textarea className="input min-h-24" required value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} /></label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button className="btn-secondary min-h-20" type="button" disabled={cancel.isPending} onClick={() => cancel.mutate('NO_CHARGE')}><span><strong className="block">Cancelar sem cobrança</strong><span className="text-xs">Encerra o pedido com valor de R$ 0,00.</span></span></button>
+          <button className="btn-primary min-h-20" type="button" disabled={cancel.isPending} onClick={() => cancel.mutate('CHARGE_UNTIL_NOW')}><span><strong className="block">Cobrar até hoje</strong><span className="text-xs">Calcula as diárias desde a retirada até agora.</span></span></button>
+        </div>
+        {cancel.isError && <p className="text-red-700">{cancel.error instanceof Error ? cancel.error.message : 'Não foi possível cancelar.'}</p>}
+      </div>
+    </Modal>}
   </section>
 }

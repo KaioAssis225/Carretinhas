@@ -65,3 +65,12 @@ def get_bytes(key: str) -> bytes:
             code="arquivo_nao_encontrado", message="Arquivo não encontrado.", status_code=404
         )
     return path.read_bytes()
+
+
+def delete_bytes(key: str) -> None:
+    settings = get_settings()
+    if settings.uses_s3_storage:
+        _s3_client().delete_object(Bucket=settings.s3_bucket, Key=key)
+        return
+    path = _local_path(key)
+    path.unlink(missing_ok=True)

@@ -6,15 +6,33 @@ import { lookupCep } from '@/api/cep'
 import { Modal } from '@/components/Modal'
 import {
   createClient,
+  downloadClientDocument,
   getClient,
+  listClientDocuments,
   listClients,
   setClientActive,
   updateClient,
+  uploadClientDocument,
   type ClientData,
+  type ClientDocumentData,
+  type ClientDocumentType,
   type ClientPayload,
 } from '@/api/clients'
 
 type ClientForm = Record<keyof ClientPayload, string>
+type DocumentFiles = Record<ClientDocumentType, File | null>
+
+const documentFields: Array<[ClientDocumentType, string]> = [
+  ['ADDRESS_PROOF', 'Comprovante de endereço'],
+  ['DRIVER_LICENSE', 'Habilitação'],
+  ['VEHICLE_DOCUMENT', 'Documento do veículo'],
+]
+
+const emptyDocuments = (): DocumentFiles => ({
+  ADDRESS_PROOF: null,
+  DRIVER_LICENSE: null,
+  VEHICLE_DOCUMENT: null,
+})
 
 const emptyForm: ClientForm = {
   full_name: '', cpf: '', birth_date: '', phone: '', cnh_number: '', cnh_category: '',
@@ -46,6 +64,8 @@ export default function Clients() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [cepStatus, setCepStatus] = useState('')
+  const [documentFiles, setDocumentFiles] = useState<DocumentFiles>(emptyDocuments)
+  const [storedDocuments, setStoredDocuments] = useState<ClientDocumentData[]>([])
   const canEdit = ['ADMIN', 'GESTOR', 'ATENDENTE'].includes(user?.role ?? '')
   const canToggle = ['ADMIN', 'GESTOR'].includes(user?.role ?? '')
   const form = useForm<ClientForm>({ defaultValues: emptyForm })
@@ -56,13 +76,26 @@ export default function Clients() {
   })
 
   const save = useMutation({
-    mutationFn: (payload: ClientPayload) =>
-      editingId ? updateClient(editingId, payload) : createClient(payload),
+    mutationFn: async (payload: ClientPayload) => {
+      if (!editingId && documentFields.some(([type]) => !documentFiles[type])) {
+        throw new Error('Adicione as três fotos de documentos do cliente.')
+      }
+      const client = editingId ? await updateClient(editingId, payload) : await createClient(payload)
+      await Promise.all(
+        documentFields.map(([type]) => {
+          const file = documentFiles[type]
+          return file ? uploadClientDocument(client.id, type, file) : Promise.resolve(null)
+        }),
+      )
+      return client
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['clients'] })
       setFormOpen(false)
       setEditingId(null)
       form.reset(emptyForm)
+      setDocumentFiles(emptyDocuments())
+      setStoredDocuments([])
     },
   })
 
@@ -74,6 +107,8 @@ export default function Clients() {
   const startCreate = () => {
     setEditingId(null)
     form.reset(emptyForm)
+    setDocumentFiles(emptyDocuments())
+    setStoredDocuments([])
     setFormOpen(true)
   }
 
@@ -94,10 +129,19 @@ export default function Clients() {
   }
 
   const startEdit = async (id: string) => {
-    const client = await getClient(id)
+    const [client, documents] = await Promise.all([getClient(id), listClientDocuments(id)])
     setEditingId(id)
     form.reset(toForm(client))
+    setDocumentFiles(emptyDocuments())
+    setStoredDocuments(documents)
     setFormOpen(true)
+  }
+
+  const openStoredDocument = async (document: ClientDocumentData) => {
+    const blob = await downloadClientDocument(document.client_id, document.id)
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener,noreferrer')
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
   }
 
   return (
@@ -157,6 +201,17 @@ export default function Clients() {
           <label>Cidade<input className="input" {...form.register('address_city')} /></label>
           <label>UF<input className="input" maxLength={2} {...form.register('address_state')} /></label>
         </div>
+        <section className="space-y-3 rounded-xl border border-slate-200 p-4">
+          <div><h3 className="font-semibold">Fotos dos documentos</h3><p className="text-sm text-slate-500">JPEG, PNG ou WebP de até 8 MB. No celular você pode usar a câmera ou a galeria.</p></div>
+          <div className="grid gap-3 md:grid-cols-3">{documentFields.map(([type, label]) => {
+            const stored = storedDocuments.find((item) => item.type === type)
+            return <label className="rounded-lg border border-slate-200 p-3" key={type}>
+              <span className="mb-2 block font-medium">{label}</span>
+              <input className="input" type="file" accept="image/jpeg,image/png,image/webp" required={!editingId && !stored} onChange={(event) => setDocumentFiles((current) => ({ ...current, [type]: event.target.files?.[0] ?? null }))} />
+              {stored && <button className="mt-2 text-sm font-medium text-primary" type="button" onClick={() => void openStoredDocument(stored)}>Visualizar armazenado: {stored.original_name}</button>}
+            </label>
+          })}</div>
+        </section>
         <label>Observações<textarea className="input min-h-24" {...form.register('notes')} /></label>
         {save.isError && <p className="text-red-700">{message(save.error)}</p>}
         <button className="btn-primary w-full sm:w-auto" disabled={save.isPending}>{save.isPending ? 'Salvando…' : 'Salvar cliente'}</button>

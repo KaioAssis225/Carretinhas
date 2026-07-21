@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.models import (
+    CancellationBillingMode,
     Client,
     InspectionType,
     MaintenanceOrder,
@@ -24,14 +25,14 @@ from app.models import (
     User,
     UserRole,
 )
-from app.repositories import inspection_repo, rental_repo, trailer_repo
+from app.repositories import financial_repo, inspection_repo, rental_repo, trailer_repo
 from app.schemas.rental import (
     AvailabilityOut,
     RentalCreate,
     RentalQuoteOut,
     RentalQuoteRequest,
 )
-from app.services import audit_service
+from app.services import audit_service, financial_service
 
 MONEY = Decimal("0.01")
 DISCOUNT_LIMITS = {
@@ -126,17 +127,8 @@ def quote(session: Session, data: RentalQuoteRequest, *, actor: User) -> RentalQ
         raise AppError(
             code="carreta_nao_encontrada", message="Carreta não encontrada.", status_code=404
         )
-    quantity = _quantity(data.start_at, data.expected_return_at, data.period_type)
-    if data.period_type == PeriodType.DAYS:
-        unit_rate = trailer.daily_rate
-    else:
-        if trailer.hourly_rate is None:
-            raise AppError(
-                code="tarifa_horaria_indisponivel",
-                message="Esta carreta não possui tarifa por hora cadastrada.",
-                status_code=422,
-            )
-        unit_rate = trailer.hourly_rate
+    quantity = _quantity(data.start_at, data.expected_return_at, PeriodType.DAYS)
+    unit_rate = trailer.daily_rate
     subtotal = _money(unit_rate * quantity)
     discount = _money(data.discount_amount)
     _ensure_discount_allowed(
@@ -239,7 +231,7 @@ def create_rental(
         period_type=data.period_type,
         period_quantity=official_quote.period_quantity,
         daily_rate_snapshot=trailer.daily_rate,
-        hourly_rate_snapshot=trailer.hourly_rate,
+        hourly_rate_snapshot=None,
         deposit_amount_snapshot=trailer.deposit_amount,
         discount_amount=official_quote.discount_amount,
         discount_reason=(data.discount_reason or "").strip() or None,
@@ -343,6 +335,17 @@ def pickup(session: Session, rental_id: uuid.UUID, *, actor: User) -> Rental:
             message=f"Esta carreta está agendada para retirada em {local_start:%d/%m/%Y %H:%M}.",
             status_code=409,
         )
+    _, paid = financial_repo.totals(session, rental.id)
+    minimum_payment = _money(rental.total_expected / Decimal("2"))
+    if paid < minimum_payment:
+        raise AppError(
+            code="pagamento_minimo_retirada",
+            message=(
+                f"Registre ao menos R$ {minimum_payment} (50% da locação) antes da retirada. "
+                f"Total pago: R$ {_money(paid)}."
+            ),
+            status_code=409,
+        )
     client = _ensure_client_can_rent(
         session.get(Client, rental.client_id), start_at=datetime.now(UTC)
     )
@@ -434,13 +437,8 @@ def return_rental(
     )
     now = datetime.now(UTC)
     late_seconds = max(0.0, (now - rental.expected_return_at).total_seconds())
-    divisor = 86400 if rental.period_type == PeriodType.DAYS else 3600
-    rental.late_units = math.ceil(late_seconds / divisor) if late_seconds else 0
-    rate = (
-        rental.daily_rate_snapshot
-        if rental.period_type == PeriodType.DAYS
-        else rental.hourly_rate_snapshot
-    )
+    rental.late_units = math.ceil(late_seconds / 86400) if late_seconds else 0
+    rate = rental.daily_rate_snapshot
     rental.late_amount = _money((rate or Decimal("0")) * rental.late_units)
     rental.actual_return_at = now
     rental.total_final = _money(rental.total_expected + rental.late_amount)
@@ -500,6 +498,88 @@ def return_rental(
         details={
             "late_amount": str(rental.late_amount),
             "maintenance": trailer.status == TrailerStatus.MAINTENANCE,
+        },
+    )
+    session.flush()
+    return rental
+
+
+def cancel_rental(
+    session: Session,
+    rental_id: uuid.UUID,
+    *,
+    billing_mode: CancellationBillingMode,
+    reason: str,
+    actor: User,
+) -> Rental:
+    rental = rental_repo.lock_rental(session, rental_id)
+    if rental is None:
+        raise AppError(
+            code="locacao_nao_encontrada", message="Locação não encontrada.", status_code=404
+        )
+    if rental.status not in (
+        RentalStatus.DRAFT,
+        RentalStatus.RESERVED,
+        RentalStatus.ACTIVE,
+        RentalStatus.OVERDUE,
+    ):
+        raise AppError(
+            code="estado_locacao_invalido",
+            message="Esta locação não pode mais ser cancelada.",
+            status_code=409,
+        )
+
+    now = datetime.now(UTC)
+    amount = Decimal("0")
+    charged_days = 0
+    if billing_mode == CancellationBillingMode.CHARGE_UNTIL_NOW and now > rental.start_at:
+        elapsed_seconds = (now - rental.start_at).total_seconds()
+        charged_days = max(1, math.ceil(elapsed_seconds / 86400))
+        gross = _money((rental.daily_rate_snapshot or Decimal("0")) * charged_days)
+        amount = _money(max(gross - min(rental.discount_amount, gross), Decimal("0")))
+
+    old_status = rental.status
+    rental.status = RentalStatus.CANCELLED
+    rental.cancel_reason = reason.strip()
+    rental.cancelled_at = now
+    rental.cancelled_by_user_id = actor.id
+    rental.cancellation_billing_mode = billing_mode
+    rental.cancellation_amount = amount
+    rental.total_final = amount
+    rental.late_units = 0
+    rental.late_amount = Decimal("0")
+    financial_service.ensure_system_charges(session, rental, actor=actor)
+
+    trailer = rental_repo.lock_trailer(session, rental.trailer_id)
+    if trailer and trailer.status in (TrailerStatus.RENTED, TrailerStatus.RESERVED):
+        trailer.status = TrailerStatus.AVAILABLE
+
+    session.add(
+        RentalHistory(
+            rental_id=rental.id,
+            user_id=actor.id,
+            action="rental_cancelled",
+            old_status=old_status.value,
+            new_status=RentalStatus.CANCELLED.value,
+            details={
+                "billing_mode": billing_mode.value,
+                "charged_days": charged_days,
+                "cancellation_amount": str(amount),
+                "reason": rental.cancel_reason,
+            },
+        )
+    )
+    audit_service.record(
+        session,
+        action="rental_cancelled",
+        entity_type="rental",
+        entity_id=str(rental.id),
+        result="ok",
+        actor_user_id=actor.id,
+        details={
+            "billing_mode": billing_mode.value,
+            "charged_days": charged_days,
+            "cancellation_amount": str(amount),
         },
     )
     session.flush()

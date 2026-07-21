@@ -22,7 +22,6 @@ class TrailerFields(BaseModel):
     height_m: Decimal = Field(gt=0, max_digits=6, decimal_places=2)
     load_capacity_kg: Decimal = Field(gt=0, max_digits=8, decimal_places=2)
     daily_rate: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
-    hourly_rate: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
     deposit_amount: Decimal | None = Field(default=None, ge=0, max_digits=10, decimal_places=2)
 
     @field_validator("code", "plate", mode="before")
@@ -65,7 +64,6 @@ class TrailerUpdate(BaseModel):
     height_m: Decimal | None = Field(default=None, gt=0, max_digits=6, decimal_places=2)
     load_capacity_kg: Decimal | None = Field(default=None, gt=0, max_digits=8, decimal_places=2)
     daily_rate: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
-    hourly_rate: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
     deposit_amount: Decimal | None = Field(default=None, ge=0, max_digits=10, decimal_places=2)
 
     _normalize_identifier = field_validator("code", "plate", mode="before")(
