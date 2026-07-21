@@ -59,7 +59,7 @@ export const SignatureCanvas = forwardRef<SignatureCanvasHandle>(function Signat
   const stop = () => { drawing.current = false }
 
   return <div className="space-y-2">
-    <canvas ref={canvasRef} className="h-44 w-full touch-none rounded-lg border-2 border-dashed border-slate-300 bg-white" aria-label="Área para assinatura" onPointerDown={start} onPointerMove={move} onPointerUp={stop} onPointerCancel={stop} />
-    <div className="flex items-center justify-between"><span className="text-xs text-slate-500">Assine dentro da área acima.</span><button type="button" className="btn-secondary" onClick={clear}>Limpar assinatura</button></div>
+    <canvas ref={canvasRef} className="h-52 w-full touch-none rounded-lg border-2 border-dashed border-slate-300 bg-white sm:h-44" aria-label="Área para assinatura" onPointerDown={start} onPointerMove={move} onPointerUp={stop} onPointerCancel={stop} />
+    <div className="grid gap-2 sm:flex sm:items-center sm:justify-between"><span className="text-xs text-slate-500">Assine dentro da área acima.</span><button type="button" className="btn-secondary w-full sm:w-auto" onClick={clear}>Limpar assinatura</button></div>
   </div>
 })

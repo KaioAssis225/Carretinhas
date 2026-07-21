@@ -1,7 +1,6 @@
 import hashlib
 import uuid
 from datetime import UTC, datetime
-from pathlib import Path
 
 from sqlalchemy.orm import Session
 
@@ -10,7 +9,7 @@ from app.core.errors import AppError
 from app.models import Inspection, InspectionPhoto, InspectionType, RentalStatus, User
 from app.repositories import inspection_repo, rental_repo
 from app.schemas.inspection import InspectionCreate
-from app.services import audit_service
+from app.services import audit_service, storage_service
 
 MIME_SIGNATURES = {
     "image/jpeg": (b"\xff\xd8\xff",),
@@ -101,13 +100,11 @@ def add_photo(
             code="categoria_foto_invalida", message="Categoria de foto inválida.", status_code=422
         )
     key = f"inspections/{inspection.id}/{uuid.uuid4().hex}{EXTENSIONS[content_type]}"
-    target = Path(settings.private_storage_dir) / key
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(content)
+    storage_service.put_bytes(key, content, content_type)
     photo = InspectionPhoto(
         inspection_id=inspection.id,
         storage_key=key,
-        original_name=Path(filename).name[:255],
+        original_name=filename.replace("\\", "/").rsplit("/", 1)[-1][:255],
         mime_type=content_type,
         size_bytes=len(content),
         sha256=hashlib.sha256(content).hexdigest(),
@@ -126,12 +123,8 @@ def add_photo(
     return photo
 
 
-def photo_path(photo: InspectionPhoto) -> Path:
-    root = Path(get_settings().private_storage_dir).resolve()
-    path = (root / photo.storage_key).resolve()
-    if root not in path.parents:
-        raise AppError(code="arquivo_invalido", message="Arquivo inválido.", status_code=500)
-    return path
+def photo_bytes(photo: InspectionPhoto) -> bytes:
+    return storage_service.get_bytes(photo.storage_key)
 
 
 def add_signature(
@@ -166,9 +159,7 @@ def add_signature(
             status_code=422,
         )
     key = f"signatures/{inspection.id}/{uuid.uuid4().hex}.png"
-    target = Path(get_settings().private_storage_dir) / key
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(content)
+    storage_service.put_bytes(key, content, content_type)
     inspection.signature_storage_key = key
     inspection.signature_sha256 = hashlib.sha256(content).hexdigest()
     inspection.signed_at = datetime.now(UTC)
@@ -184,11 +175,7 @@ def add_signature(
     return inspection
 
 
-def signature_path(inspection: Inspection) -> Path | None:
+def signature_bytes(inspection: Inspection) -> bytes | None:
     if not inspection.signature_storage_key:
         return None
-    root = Path(get_settings().private_storage_dir).resolve()
-    path = (root / inspection.signature_storage_key).resolve()
-    if root not in path.parents:
-        raise AppError(code="arquivo_invalido", message="Arquivo inválido.", status_code=500)
-    return path
+    return storage_service.get_bytes(inspection.signature_storage_key)

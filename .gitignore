@@ -30,6 +30,7 @@ npm-debug.log*
 # IDE / SO
 .vscode/
 .idea/
+.claude/
 Thumbs.db
 .DS_Store
 

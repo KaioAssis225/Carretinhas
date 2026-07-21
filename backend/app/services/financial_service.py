@@ -2,13 +2,11 @@ import hashlib
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
-from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.core.errors import AppError
 from app.models import (
     ChargeType,
@@ -32,7 +30,7 @@ from app.schemas.financial import (
     PaymentCreate,
     PaymentOut,
 )
-from app.services import audit_service, inspection_service, pdf_service
+from app.services import audit_service, inspection_service, pdf_service, storage_service
 
 
 def _rental(session: Session, rental_id: uuid.UUID) -> Rental:
@@ -463,13 +461,11 @@ def generate_document(
         )
         inspection = inspection_repo.get_for_rental(session, rental.id, inspection_type)
         if inspection:
-            signature = inspection_service.signature_path(inspection)
+            signature = inspection_service.signature_bytes(inspection)
     content = pdf_service.simple_pdf(title, _document_lines(snapshot), signature)
     document_id = uuid.uuid4()
     storage_key = f"documents/{rental.id}/{document_id}.pdf"
-    path = Path(get_settings().private_storage_dir) / storage_key
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(content)
+    storage_service.put_bytes(storage_key, content, "application/pdf")
     document = RentalDocument(
         id=document_id,
         rental_id=rental.id,
@@ -495,13 +491,5 @@ def generate_document(
     return document
 
 
-def document_path(document: RentalDocument) -> Path:
-    root = Path(get_settings().private_storage_dir).resolve()
-    path = (root / document.storage_key).resolve()
-    if root not in path.parents or not path.is_file():
-        raise AppError(
-            code="documento_indisponivel",
-            message="Arquivo do documento indisponível.",
-            status_code=404,
-        )
-    return path
+def document_bytes(document: RentalDocument) -> bytes:
+    return storage_service.get_bytes(document.storage_key)

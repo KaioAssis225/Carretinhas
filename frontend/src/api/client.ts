@@ -8,8 +8,8 @@
  *   ({ error: { code, message, correlation_id, details } }).
  */
 
-const BASE_URL: string =
-  import.meta.env.VITE_API_URL ?? `${window.location.protocol}//${window.location.hostname}:8000`
+const BASE_URL: string = import.meta.env.VITE_API_URL
+  || (import.meta.env.DEV ? `${window.location.protocol}//${window.location.hostname}:8000` : '')
 const API_PREFIX = '/api/v1'
 
 let accessToken: string | null = null

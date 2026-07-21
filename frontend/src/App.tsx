@@ -10,7 +10,6 @@ import Trailers from '@/pages/Trailers'
 import Rentals from '@/pages/Rentals'
 import InspectionFlow from '@/pages/InspectionFlow'
 import Maintenance from '@/pages/Maintenance'
-import Reports from '@/pages/Reports'
 
 export default function App() {
   return (
@@ -26,7 +25,6 @@ export default function App() {
           <Route path="/locacoes/:rentalId/vistoria/:type" element={<InspectionFlow />} />
           <Route path="/manutencoes" element={<Maintenance />} />
           <Route path="/financeiro" element={<Navigate to="/locacoes" replace />} />
-          <Route path="/relatorios" element={<Reports />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Route>

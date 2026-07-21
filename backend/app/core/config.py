@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     login_rate_limit_window_seconds: int = 60
     private_storage_dir: str = "/app/private-storage"
     max_inspection_photo_bytes: int = 8 * 1024 * 1024
+    s3_endpoint: str | None = None
+    s3_bucket: str | None = None
+    s3_access_key_id: str | None = None
+    s3_secret_access_key: str | None = None
+    s3_region: str = "auto"
+    bootstrap_admin_email: str | None = None
+    bootstrap_admin_password: str | None = None
 
     @model_validator(mode="after")
     def _exigir_segredo_real_em_producao(self) -> "Settings":
@@ -56,6 +63,23 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def cors_origin_regex(self) -> str | None:
+        if self.environment != "local":
+            return None
+        # Permite que celulares na mesma rede privada acessem o Vite local.
+        return (
+            r"^http://(?:localhost|127\.0\.0\.1|10(?:\.\d{1,3}){3}|"
+            r"192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])"
+            r"(?:\.\d{1,3}){2}):5173$"
+        )
+
+    @property
+    def uses_s3_storage(self) -> bool:
+        return all(
+            (self.s3_endpoint, self.s3_bucket, self.s3_access_key_id, self.s3_secret_access_key)
+        )
 
 
 @lru_cache

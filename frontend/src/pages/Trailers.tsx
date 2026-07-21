@@ -113,11 +113,11 @@ export default function Trailers() {
     <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h1 className="text-2xl font-bold">Carretas</h1><p className="text-slate-600">Cadastro e situação da frota.</p></div>
-        {canManage && <button className="btn-primary" onClick={startCreate}>Nova carreta</button>}
+        {canManage && <button className="btn-primary w-full sm:w-auto" onClick={startCreate}>Nova carreta</button>}
       </div>
 
       <div className="card flex flex-wrap items-center gap-3">
-        <input className="input min-w-64 flex-1" aria-label="Buscar carretas" placeholder="Buscar por código, modelo ou placa" value={search} onChange={(event) => setSearch(event.target.value)} />
+        <input className="input min-w-0 flex-1 basis-full sm:basis-auto" aria-label="Buscar carretas" placeholder="Buscar por código, modelo ou placa" value={search} onChange={(event) => setSearch(event.target.value)} />
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />Incluir inativas</label>
       </div>
 
@@ -127,7 +127,7 @@ export default function Trailers() {
         {trailers.data.data.map((trailer) => <article className="card space-y-3" key={trailer.id}>
           <div className="flex justify-between gap-2"><div><h2 className="font-semibold">{trailer.code} · {trailer.model}</h2><p className="text-sm text-slate-500">{trailer.plate || 'Sem placa'}</p></div><span className="text-sm font-medium text-primary">{statusLabels[trailer.status]}</span></div>
           <dl className="grid grid-cols-2 gap-2 text-sm"><div><dt className="text-slate-500">Dimensões</dt><dd>{trailer.length_m} × {trailer.width_m} × {trailer.height_m} m</dd></div><div><dt className="text-slate-500">Capacidade</dt><dd>{trailer.load_capacity_kg} kg</dd></div><div><dt className="text-slate-500">Diária</dt><dd>R$ {Number(trailer.daily_rate).toFixed(2)}</dd></div><div><dt className="text-slate-500">Cadastro</dt><dd>{trailer.is_active ? 'Ativo' : 'Inativo'}</dd></div></dl>
-          {canManage && <div className="flex gap-2"><button className="btn-secondary" onClick={() => startEdit(trailer)}>Editar</button><button className="btn-secondary" disabled={toggle.isPending || !['AVAILABLE', 'INACTIVE'].includes(trailer.status)} onClick={() => toggle.mutate({ id: trailer.id, active: !trailer.is_active })}>{trailer.is_active ? 'Inativar' : 'Reativar'}</button></div>}
+          {canManage && <div className="mobile-actions flex gap-2"><button className="btn-secondary" onClick={() => startEdit(trailer)}>Editar</button><button className="btn-secondary" disabled={toggle.isPending || !['AVAILABLE', 'INACTIVE'].includes(trailer.status)} onClick={() => toggle.mutate({ id: trailer.id, active: !trailer.is_active })}>{trailer.is_active ? 'Inativar' : 'Reativar'}</button></div>}
         </article>)}
         {trailers.data.data.length === 0 && <p className="text-slate-500">Nenhuma carreta encontrada.</p>}
       </div>}
@@ -148,7 +148,7 @@ export default function Trailers() {
         </div>
         <label>Descrição<textarea className="input min-h-24" {...form.register('description')} /></label>
         {save.isError && <p className="text-red-700">{message(save.error)}</p>}
-        <button className="btn-primary" disabled={save.isPending}>{save.isPending ? 'Salvando…' : 'Salvar carreta'}</button>
+        <button className="btn-primary w-full sm:w-auto" disabled={save.isPending}>{save.isPending ? 'Salvando…' : 'Salvar carreta'}</button>
       </form></Modal>}
     </section>
   )

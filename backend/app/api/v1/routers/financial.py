@@ -2,7 +2,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Header, status
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 
 from app.api.deps import DbSession, require_roles
 from app.core.errors import AppError
@@ -105,20 +105,21 @@ def create_document(
     return _document_out(document)
 
 
-@router.get("/{rental_id}/documents/{document_id}/download", response_class=FileResponse)
+@router.get("/{rental_id}/documents/{document_id}/download")
 def download_document(
     rental_id: uuid.UUID,
     document_id: uuid.UUID,
     session: DbSession,
     user: FinancialReader,
-) -> FileResponse:
+) -> Response:
     document = financial_repo.get_document(session, document_id)
     if document is None or document.rental_id != rental_id:
         raise AppError(
             code="documento_nao_encontrado", message="Documento não encontrado.", status_code=404
         )
-    return FileResponse(
-        financial_service.document_path(document),
+    filename = f"{document.type.value.lower()}-{document.version}.pdf"
+    return Response(
+        content=financial_service.document_bytes(document),
         media_type="application/pdf",
-        filename=f"{document.type.value.lower()}-{document.version}.pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

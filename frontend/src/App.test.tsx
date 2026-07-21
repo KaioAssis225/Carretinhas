@@ -96,6 +96,14 @@ describe('App', () => {
     ).toBeInTheDocument()
   })
 
+  it('não volta para a troca obrigatória depois de regularizar a senha', async () => {
+    mockRefresh(true)
+    renderApp('/trocar-senha')
+
+    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Trocar senha' })).not.toBeInTheDocument()
+  })
+
   it('rota inexistente autenticada mostra página não encontrada', async () => {
     mockRefresh(true)
     renderApp('/rota-que-nao-existe')

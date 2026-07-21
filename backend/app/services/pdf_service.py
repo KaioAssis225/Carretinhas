@@ -1,5 +1,4 @@
 from io import BytesIO
-from pathlib import Path
 from typing import Any
 
 from reportlab.lib import colors
@@ -50,7 +49,7 @@ def _page(canvas: Any, document: Any) -> None:
     page.restoreState()
 
 
-def simple_pdf(title: str, lines: list[str], signature_path: Path | None = None) -> bytes:
+def simple_pdf(title: str, lines: list[str], signature_content: bytes | None = None) -> bytes:
     """Gera um PDF A4 profissional com marca, seções, dados e assinatura."""
     buffer = BytesIO()
     width, height = A4
@@ -146,9 +145,9 @@ def simple_pdf(title: str, lines: list[str], signature_path: Path | None = None)
             story.append(Paragraph(line, intro_style))
     flush_details()
 
-    if signature_path and signature_path.is_file():
+    if signature_content:
         signature_buffer = BytesIO()
-        with PILImage.open(signature_path).convert("RGBA") as source_signature:
+        with PILImage.open(BytesIO(signature_content)).convert("RGBA") as source_signature:
             white_background = PILImage.new("RGBA", source_signature.size, "white")
             white_background.alpha_composite(source_signature)
             white_background.convert("RGB").save(signature_buffer, format="PNG")

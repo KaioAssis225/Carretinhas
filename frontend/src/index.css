@@ -5,9 +5,12 @@
 @layer base {
   html {
     @apply antialiased;
+    -webkit-text-size-adjust: 100%;
   }
   body {
     @apply bg-slate-50 text-slate-900;
+    min-width: 320px;
+    overscroll-behavior-y: none;
   }
   :where(a, button, input, select, textarea):focus-visible {
     @apply outline outline-2 outline-offset-2 outline-primary;
@@ -19,7 +22,7 @@
     @apply rounded-lg border border-slate-200 bg-white p-4 shadow-sm;
   }
   .input {
-    @apply mt-1 block min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20;
+    @apply mt-1 block min-h-12 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 sm:min-h-11 sm:text-sm;
   }
   .btn-primary {
     @apply inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50;
@@ -29,5 +32,19 @@
   }
   label {
     @apply text-sm font-medium text-slate-700;
+  }
+}
+
+@media (max-width: 639px) {
+  .card {
+    @apply p-3;
+  }
+  .mobile-actions {
+    @apply grid w-full grid-cols-1 gap-2;
+  }
+  .mobile-actions > .btn-primary,
+  .mobile-actions > .btn-secondary,
+  .mobile-actions > a {
+    @apply w-full;
   }
 }

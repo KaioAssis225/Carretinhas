@@ -104,18 +104,18 @@ export default function Clients() {
     <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h1 className="text-2xl font-bold">Clientes</h1><p className="text-slate-600">Cadastro e consulta de locatários.</p></div>
-        {canEdit && <button className="btn-primary" onClick={startCreate}>Novo cliente</button>}
+        {canEdit && <button className="btn-primary w-full sm:w-auto" onClick={startCreate}>Novo cliente</button>}
       </div>
 
       <div className="card flex flex-wrap items-center gap-3">
-        <input className="input min-w-64 flex-1" aria-label="Buscar clientes" placeholder="Buscar por nome, CPF ou telefone" value={search} onChange={(event) => setSearch(event.target.value)} />
+        <input className="input min-w-0 flex-1 basis-full sm:basis-auto" aria-label="Buscar clientes" placeholder="Buscar por nome, CPF ou telefone" value={search} onChange={(event) => setSearch(event.target.value)} />
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />Incluir inativos</label>
       </div>
 
       {clients.isLoading && <p>Carregando clientes…</p>}
       {clients.isError && <p className="text-red-700">{message(clients.error)}</p>}
       {clients.data && (
-        <div className="card overflow-x-auto p-0">
+        <div className="card hidden overflow-x-auto p-0 md:block">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-100"><tr><th className="p-3">Nome</th><th className="p-3">CPF</th><th className="p-3">Telefone</th><th className="p-3">Cidade</th><th className="p-3">Situação</th><th className="p-3">Ações</th></tr></thead>
             <tbody>{clients.data.data.map((client) => <tr className="border-t" key={client.id}>
@@ -128,6 +128,15 @@ export default function Clients() {
           {clients.data.data.length === 0 && <p className="p-5 text-center text-slate-500">Nenhum cliente encontrado.</p>}
         </div>
       )}
+
+      {clients.data && <div className="grid gap-3 md:hidden">
+        {clients.data.data.map((client) => <article className="card space-y-3" key={client.id}>
+          <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-semibold">{client.full_name}</h2><p className="text-sm text-slate-500">{client.cpf_masked}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${client.is_active ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-600'}`}>{client.is_active ? 'Ativo' : 'Inativo'}</span></div>
+          <div className="grid gap-1 text-sm"><p><span className="text-slate-500">Telefone:</span> {client.phone}</p><p><span className="text-slate-500">Cidade:</span> {[client.address_city, client.address_state].filter(Boolean).join(' / ') || '—'}</p></div>
+          <div className="mobile-actions">{canEdit && <button className="btn-secondary" onClick={() => void startEdit(client.id)}>Editar</button>}{canToggle && <button className="btn-secondary" disabled={toggle.isPending} onClick={() => toggle.mutate({ id: client.id, active: !client.is_active })}>{client.is_active ? 'Inativar' : 'Reativar'}</button>}</div>
+        </article>)}
+        {clients.data.data.length === 0 && <div className="card text-center text-slate-500">Nenhum cliente encontrado.</div>}
+      </div>}
 
       {formOpen && <Modal title={editingId ? 'Editar cliente' : 'Novo cliente'} onClose={() => setFormOpen(false)}>
       <form className="space-y-4" onSubmit={form.handleSubmit((values) => save.mutate(toPayload(values)))}>
@@ -150,7 +159,7 @@ export default function Clients() {
         </div>
         <label>Observações<textarea className="input min-h-24" {...form.register('notes')} /></label>
         {save.isError && <p className="text-red-700">{message(save.error)}</p>}
-        <button className="btn-primary" disabled={save.isPending}>{save.isPending ? 'Salvando…' : 'Salvar cliente'}</button>
+        <button className="btn-primary w-full sm:w-auto" disabled={save.isPending}>{save.isPending ? 'Salvando…' : 'Salvar cliente'}</button>
       </form></Modal>}
     </section>
   )

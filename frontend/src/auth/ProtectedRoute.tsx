@@ -21,5 +21,9 @@ export function ProtectedRoute() {
     return <Navigate to="/trocar-senha" replace />
   }
 
+  if (!user?.must_change_password && location.pathname === '/trocar-senha') {
+    return <Navigate to="/" replace />
+  }
+
   return <Outlet />
 }

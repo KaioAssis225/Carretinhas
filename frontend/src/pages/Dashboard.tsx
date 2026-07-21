@@ -26,7 +26,7 @@ export default function Dashboard() {
   const [end, setEnd] = useState(currentMonthEnd)
   const dashboard = useQuery({ queryKey: ['dashboard', start, end], queryFn: () => getDashboard(start, end) })
   return <section className="space-y-5">
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-2xl font-bold">Dashboard</h1><p className="text-slate-600">Visão operacional atual e valores do período autorizado.</p></div><div className="flex flex-wrap gap-2"><label className="text-sm">De<input className="input mt-1" type="date" value={start} onChange={(event) => setStart(event.target.value)} /></label><label className="text-sm">Até<input className="input mt-1" type="date" value={end} onChange={(event) => setEnd(event.target.value)} /></label></div></div>
+    <div className="grid items-end gap-3 lg:grid-cols-[1fr_auto]"><div><h1 className="text-2xl font-bold">Dashboard</h1><p className="text-slate-600">Visão operacional atual e valores do período autorizado.</p></div><div className="grid w-full grid-cols-2 gap-2 lg:w-auto"><label className="min-w-0 text-sm">De<input className="input mt-1" type="date" value={start} onChange={(event) => setStart(event.target.value)} /></label><label className="min-w-0 text-sm">Até<input className="input mt-1" type="date" value={end} onChange={(event) => setEnd(event.target.value)} /></label></div></div>
     {dashboard.isLoading && <div className="card" role="status">Carregando indicadores…</div>}
     {dashboard.isError && <div className="card text-red-700" role="alert">Não foi possível carregar os indicadores. Confira o período e tente novamente.</div>}
     {dashboard.data && <>

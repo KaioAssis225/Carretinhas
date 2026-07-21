@@ -33,7 +33,8 @@ export default function Login() {
         navigate('/trocar-senha', { replace: true })
         return
       }
-      const from = (location.state as { from?: string } | null)?.from ?? '/'
+      const requestedFrom = (location.state as { from?: string } | null)?.from
+      const from = requestedFrom && requestedFrom !== '/trocar-senha' ? requestedFrom : '/'
       navigate(from, { replace: true })
     } catch (error) {
       setServerError(

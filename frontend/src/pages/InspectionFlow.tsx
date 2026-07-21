@@ -53,7 +53,7 @@ export default function InspectionFlow() {
   })
   if (existingInspection) return <section className="mx-auto max-w-2xl space-y-5">
     <div><h1 className="text-2xl font-bold">Confirmar {kind === 'PICKUP' ? 'retirada' : 'devolução'}</h1><p className="text-slate-600">O checklist, a foto e a assinatura desta etapa já estão registrados.</p></div>
-    <div className="card space-y-4"><p>Responsável: <strong>{existingInspection.responsible_name}</strong></p>{confirmExisting.isError && <p className="text-red-700">{confirmExisting.error instanceof Error ? confirmExisting.error.message : 'Não foi possível confirmar.'}</p>}<div className="flex gap-2"><button type="button" className="btn-secondary" onClick={() => navigate('/locacoes')}>Voltar</button><button type="button" className="btn-primary" disabled={confirmExisting.isPending} onClick={() => confirmExisting.mutate()}>{confirmExisting.isPending ? 'Confirmando…' : `Confirmar ${kind === 'PICKUP' ? 'retirada' : 'devolução'}`}</button></div></div>
+    <div className="card space-y-4"><p>Responsável: <strong>{existingInspection.responsible_name}</strong></p>{confirmExisting.isError && <p className="text-red-700">{confirmExisting.error instanceof Error ? confirmExisting.error.message : 'Não foi possível confirmar.'}</p>}<div className="mobile-actions flex gap-2"><button type="button" className="btn-secondary" onClick={() => navigate('/locacoes')}>Voltar</button><button type="button" className="btn-primary" disabled={confirmExisting.isPending} onClick={() => confirmExisting.mutate()}>{confirmExisting.isPending ? 'Confirmando…' : `Confirmar ${kind === 'PICKUP' ? 'retirada' : 'devolução'}`}</button></div></div>
   </section>
   return <section className="mx-auto max-w-2xl space-y-5">
     <div><h1 className="text-2xl font-bold">Vistoria de {kind === 'PICKUP' ? 'retirada' : 'devolução'}</h1><p className="text-slate-600">Checklist otimizado para uso no pátio.</p></div>
@@ -66,7 +66,7 @@ export default function InspectionFlow() {
       {kind === 'RETURN' && <label className="flex min-h-12 items-center gap-3"><input className="h-6 w-6" type="checkbox" {...form.register('send_to_maintenance')} />Encaminhar carreta para manutenção</label>}
       {!canTransition && <p className="rounded bg-amber-50 p-3 text-sm text-amber-800">Seu perfil registra a vistoria; a transição operacional deve ser confirmada por atendente, gestor ou administrador.</p>}
       {submit.isError && <p className="text-red-700">{submit.error instanceof Error ? submit.error.message : 'Falha na vistoria.'}</p>}
-      <div className="flex gap-2"><button type="button" className="btn-secondary" onClick={() => navigate('/locacoes')}>Cancelar</button><button className="btn-primary" disabled={submit.isPending}>{submit.isPending ? 'Enviando…' : kind === 'PICKUP' ? 'Confirmar retirada' : 'Confirmar devolução'}</button></div>
+      <div className="mobile-actions flex gap-2"><button type="button" className="btn-secondary" onClick={() => navigate('/locacoes')}>Cancelar</button><button className="btn-primary" disabled={submit.isPending}>{submit.isPending ? 'Enviando…' : kind === 'PICKUP' ? 'Confirmar retirada' : 'Confirmar devolução'}</button></div>
     </form>
   </section>
 }

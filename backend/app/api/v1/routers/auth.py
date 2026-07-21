@@ -35,7 +35,7 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
         path=f"{settings.api_v1_prefix}/auth",
         httponly=True,
         secure=settings.environment != "local",
-        samesite="lax",
+        samesite="none" if settings.environment == "production" else "lax",
     )
 
 

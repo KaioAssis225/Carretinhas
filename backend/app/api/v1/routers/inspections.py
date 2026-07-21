@@ -2,7 +2,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 
 from app.api.deps import DbSession, require_roles
 from app.core.errors import AppError
@@ -67,13 +67,12 @@ async def upload_signature(
 
 
 @router.get("/inspection-photos/{photo_id}/content")
-def photo_content(photo_id: uuid.UUID, session: DbSession, user: PhotoReader) -> FileResponse:
+def photo_content(photo_id: uuid.UUID, session: DbSession, user: PhotoReader) -> Response:
     photo = inspection_repo.get_photo(session, photo_id)
     if photo is None:
         raise AppError(code="foto_nao_encontrada", message="Foto não encontrada.", status_code=404)
-    path = inspection_service.photo_path(photo)
-    if not path.exists():
-        raise AppError(
-            code="arquivo_nao_encontrado", message="Arquivo não encontrado.", status_code=404
-        )
-    return FileResponse(path, media_type=photo.mime_type, filename=photo.original_name)
+    return Response(
+        content=inspection_service.photo_bytes(photo),
+        media_type=photo.mime_type,
+        headers={"Content-Disposition": f'inline; filename="{photo.original_name}"'},
+    )
